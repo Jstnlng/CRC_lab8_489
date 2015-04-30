@@ -1,6 +1,5 @@
-#include<stdio.h>
-#include<string.h>
-#include "header.h"
+#include <stdio.h>
+#include <string.h>
 
 void xor();
 void crc();
