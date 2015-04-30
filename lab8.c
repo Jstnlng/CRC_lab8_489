@@ -1,33 +1,37 @@
 #include<stdio.h>
 #include<string.h>
 #include "header.h"
-#define N strlen(g)
 
-char t[28],cs[28],g[]="10001000000100001";
+
+#define N strlen(gen_poly)
+
+char data[1024], checksum[28], gen_poly[]="10001000000100001";
 int a,e,c;
 long M = 2147483647;
 
 int main()
 {
 	printf("\nEnter data : ");
-	scanf("%s", t);
+	scanf("%s", data);
 
 	printf("\n----------------------------------------");
-	printf("\nGeneratng polynomial : %s", g);
+	printf("\nGeneratng polynomial : %s", gen_poly);
 
-	a = strlen(t);
+	a = strlen(data);
 	for(e = a; e < a+N-1; e++) 
-		t[e] = '0';
+		data[e] = '0';
+
 	printf("\n----------------------------------------");
-	printf("\nModified data is : %s", t);
+	printf("\nModified data is : %s", data);
 	printf("\n----------------------------------------");
+
 	crc();
 
-	printf("\nChecksum is : %s", cs);
+	printf("\nChecksum is : %s", checksum);
 
-	for(e = a; e < a+N-1; e++) t[e] = cs[e-a];
+	for(e = a; e < a+N-1; e++) data[e] = checksum[e-a];
 	printf("\n----------------------------------------");
-	printf("\nFinal codeword is : %s", t);
+	printf("\nFinal codeword is : %s", data);
 	printf("\n----------------------------------------");
 	printf("\nTest error detection 0(yes) 1(no)? : ");
 	scanf("%d", &e);
@@ -40,12 +44,14 @@ int main()
 			scanf("%d", &e);
 		}while(e == 0 || e > a+N-1);
 
-		t[e-1] = (t[e-1] == '0') ? '1' : '0';
+		data[e-1] = (data[e-1] == '0') ? '1' : '0';
 		printf("\n----------------------------------------");
-		printf("\nErroneous data : %s\n", t);
+		printf("\nErroneous data : %s\n", data);
 	}
+
 	crc();
-	for(e = 0; (e < N-1) && (cs[e] != '1'); e++);
+
+	for(e = 0; (e < N-1) && (checksum[e] != '1'); e++);
 	{
 		if(e < N-1) 
 			printf("\nError detected\n\n");
@@ -61,19 +67,19 @@ int main()
 void xor()
 {
 	for(c = 1; c < N; c++)
-		cs[c] = (( cs[c] == g[c])?'0':'1');
+		checksum[c] = (( checksum[c] == gen_poly[c])?'0':'1');
 }
 
 void crc()
 {
-	for(e = 0; e < N; e++) cs[e] = t[e];
+	for(e = 0; e < N; e++) checksum[e] = data[e];
 	do
 	{
-		if(cs[0] == '1') 
+		if(checksum[0] == '1') 
 			xor();
 		for(c = 0; c < N-1; c++) 
-			cs[c] = cs[c+1];
-		cs[c] = t[e++];
+			checksum[c] = checksum[c+1];
+		checksum[c] = data[e++];
 	}while(e <= a+N-1);
 }
 
