@@ -1,110 +1,121 @@
-#include <stdio.h>
-#include <string.h>
 #include "header.h"
 
-
 #define N strlen(gen_poly)
+// #define BIT_ERROR_RATE 0.00001
 
-char data[1024], checksum[28], gen_poly[]="10001000000100001";
-int a,e,c;
+char data[1024], codeword[1041], crc[17], gen_poly[]="10001000000100001";
+int data_size, i, crc_index;
+double bre;
 long M = 2147483647;
 
-int main()
+int main(int argc, char ** argv)
 {
+	if(argc != 2)
+	{
+		printf("\nUsage:\n\t ./lab8 <BIT_ERROR_RATE>\n\n");
+		exit(1);
+	}
+	bre = atof(argv[1]);
+	//prompt the user for data input
 	printf("\nEnter data : ");
 	scanf("%s", data);
+	printf("\nPolynomial :  %s", gen_poly);
 
-	printf("\n----------------------------------------");
-	printf("\nGeneratng polynomial : %s", gen_poly);
+	//copy input into a seperate larger array 
+	//where the codeword will be stored
+	strcpy(codeword, data);
 
-	a = strlen(data);
-	for(e = a; e < a+N-1; e++) 
-		data[e] = '0';
+	data_size = strlen(data);
 
-	printf("\n----------------------------------------");
-	printf("\nModified data is : %s", data);
-	printf("\n----------------------------------------");
-
-	crc();
-
-	printf("\nChecksum is : %s", checksum);
-
-	for(e = a; e < a+N-1; e++) data[e] = checksum[e-a];
-	printf("\n----------------------------------------");
-	printf("\nFinal codeword is : %s", data);
-	printf("\n----------------------------------------");
-	printf("\nTest error detection 0(yes) 1(no)? : ");
-	scanf("%d", &e);
-	
-	if(e == 0)
+	//pad the codeword with 0's
+	for(i = data_size; i < data_size+N-1; i++) 
 	{
-		do
-		{
-			printf("\nEnter the position where error is to be inserted : ");
-			scanf("%d", &e);
-		}while(e == 0 || e > a+N-1);
-
-		data[e-1] = (data[e-1] == '0') ? '1' : '0';
-		printf("\n----------------------------------------");
-		printf("\nErroneous data : %s\n", data);
+		codeword[i] = '0';
 	}
 
-	crc();
+	printf("\nModified data is :        %s", codeword);
 
-	for(e = 0; (e < N-1) && (checksum[e] != '1'); e++);
+	//initial crc calculation from the user input
+	calculateCRC();
+
+	printf("\nChecksum is : %s", crc);
+
+	//codeword calculation before error is introduced
+	for(i = data_size; i < data_size+N-1; i++) 
 	{
-		if(e < N-1) 
-			printf("\nError detected\n\n");
-		else
-		{
-			printf("\nNo error detected\n\n");
-			printf("\n----------------------------------------\n");
-		}
+			codeword[i] = crc[i-data_size];
+	}
+	printf("\nFinal codeword is :       %s", codeword);
+
+	//introduce error with a bit rate error 
+	//value that is given up at the top
+	IntroduceError(codeword, bre);
+	//XORwithPoly(codeword);
+	
+	//display the altered codeword
+	printf("\nCorrupted Codeword data : %s\n", codeword);
+
+	//recalculate the crc
+	calculateCRC();
+
+	//find if there is error in the codeword
+	for(i = 0; (i < N-1) && (crc[i] != '1'); i++);
+	{
+		if(i < N-1) printf("\nError detected\n\n");
+		else printf("\nNo error detected\n\n");
 		return 0;
 	}
 }
 
-void xor()
+//this function calculates the crc of the data
+void calculateCRC()
 {
-	for(c = 1; c < N; c++)
-		checksum[c] = (( checksum[c] == gen_poly[c])?'0':'1');
-}
+	for(i = 0; i < N; i++) 
+	{
+		crc[i] = codeword[i];
+	}
 
-void crc()
-{
-	for(e = 0; e < N; e++) checksum[e] = data[e];
 	do
 	{
-		if(checksum[0] == '1') 
-			xor();
-		for(c = 0; c < N-1; c++) 
-			checksum[c] = checksum[c+1];
-		checksum[c] = data[e++];
-	}while(e <= a+N-1);
+		if(crc[0] == '1') 
+		{
+			for(crc_index = 1; crc_index < N; crc_index++)
+				{
+					crc[crc_index] = ((crc[crc_index] == gen_poly[crc_index]) ? '0' : '1');
+				}
+		}
+
+		for(crc_index = 0; crc_index < N-1; crc_index++) 
+		{
+			crc[crc_index] = crc[crc_index+1];
+		}
+		
+		crc[crc_index] = codeword[i++];
+	}while(i <= data_size+N-1);
 }
 
-/*****************************************************************************/
-/*                                                                           */
-/* This routine is called with a pointer to a null terminted string of       */
-/* characters, data, and a probability of bit error, p, and introduces       */
-/* errors in the bits of the string according to this probability.           */
-/* The routine does not return anything.                                     */
-/*                                                                           */
-/*****************************************************************************/
-
+//we altered the IntroduceError function so that
+//it would work with a char array of '1' and '0'
+//characters instead of hex
 void IntroduceError(char *data, double p)
 {
-	char c, *pointer = data;
-	int i;
-	while (*pointer != '\0') 
+	char *pointer = data;
+	i = 0;
+	while (pointer[i] != '\0') 
 	{
-		c = 0x01;
-		for ( i = 0; i < 8; i++) 
-		{
-			if ((double)random()/M <= p)
-				*pointer ^= c;
-			c <<= 1;
-		}
-		pointer++;
+		if ((double)random()/M <= p) 
+			pointer[i] = (pointer[i] == '0') ? '1' : '0';
+		i++;
+	}
+}
+
+void XORwithPoly(char *data)
+{
+	char *pointer = data;
+	i = 0;
+	while (pointer[i] != '\0') 
+	{
+		pointer[i] = (pointer[i] != gen_poly[i%17]) ? '1' : '0';
+		i++;
 	}
 }
